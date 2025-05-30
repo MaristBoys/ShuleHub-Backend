@@ -4,7 +4,8 @@
 
 const express = require('express');
 const { google } = require('googleapis');
-const { OAuth2Client } = google.auth;
+const { OAuth2Client } = require('google-auth-library');
+const { GoogleAuth } = require('google-auth-library');
 
 
 const authRoute = express.Router();
