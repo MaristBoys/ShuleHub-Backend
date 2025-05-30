@@ -11,6 +11,8 @@ const { driveRoutes } = require('./drive');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+console.log(`Porta assegnata: ${PORT}`);
+
 app.use(cors());
 app.use(express.json());
 
