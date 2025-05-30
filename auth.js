@@ -3,7 +3,9 @@
 // checks if the user is authorized by looking them up in a Google Sheets document,
 
 const express = require('express');
-const { OAuth2Client, GoogleAuth, google } = require('googleapis');
+const { google } = require('googleapis');
+const { OAuth2Client } = google.auth;
+
 
 const authRoute = express.Router();
 const oAuthClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
