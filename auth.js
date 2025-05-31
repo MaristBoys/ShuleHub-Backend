@@ -35,7 +35,18 @@ async function checkUserInSheet(email) {
 }
 
 authRoute.post('/', async (req, res) => {
-    const { idToken } = req.body;
+    // Estrai l'ID Token dall'header Authorization
+    // Il formato è "Bearer <idToken>", quindi lo splittiamo e prendiamo la seconda parte
+    const authHeader = req.headers.authorization;
+    let idToken = null;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        idToken = authHeader.split(' ')[1];
+    }
+
+    if (!idToken) {
+        console.error('ID Token non trovato nell\'header Authorization.');
+        return res.status(401).json({ success: false, message: 'ID Token non fornito o non valido.' });
+    }
 
     try {
         const ticket = await oAuthClient.verifyIdToken({
@@ -85,8 +96,6 @@ authRoute.post('/logout', (req, res) => {
 });
 
 module.exports = { authRoute };
-
-
 
 
 
