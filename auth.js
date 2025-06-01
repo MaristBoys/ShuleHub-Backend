@@ -35,8 +35,6 @@ async function checkUserInSheet(email) {
 }
 
 authRoute.post('/', async (req, res) => {
-    // Estrai l'ID Token dall'header Authorization
-    // Il formato è "Bearer <idToken>", quindi lo splittiamo e prendiamo la seconda parte
     const authHeader = req.headers.authorization;
     let idToken = null;
     if (authHeader && authHeader.startsWith('Bearer ')) {
@@ -45,7 +43,7 @@ authRoute.post('/', async (req, res) => {
 
     if (!idToken) {
         console.error('ID Token non trovato nell\'header Authorization.');
-        return res.status(401).json({ success: false, message: 'ID Token non fornito o non valido.' });
+        return res.status(401).json({ success: false, message: 'ID Token not provided or invalid.' });
     }
 
     try {
@@ -58,6 +56,7 @@ authRoute.post('/', async (req, res) => {
 
         const userData = await checkUserInSheet(userEmail);
         if (userData) {
+            // QUI L'ACCESSO È RIUSCITO
             res.json({
                 success: true,
                 name: userData.name,
@@ -70,9 +69,10 @@ authRoute.post('/', async (req, res) => {
                 googleId: payload.sub
             });
         } else {
+            // QUI L'ACCESSO NON È RIUSCITO (utente non autorizzato nel foglio)
             res.json({
                 success: false,
-                message: 'Utente non autorizzato',
+                message: `Access denied. The account ${payload.email} is not on the authorized users list.`, // Modificato da payload.name a payload.email
                 googleName: payload.name,
                 googlePicture: payload.picture,
                 email: userEmail,
@@ -82,8 +82,9 @@ authRoute.post('/', async (req, res) => {
             });
         }
     } catch (err) {
+        // QUI L'ACCESSO NON È RIUSCITO (problema con la verifica del token)
         console.error('Errore verifica idToken:', err);
-        res.status(401).json({ success: false, message: 'Token non valido' });
+        res.status(401).json({ success: false, message: 'Invalid Token' }); // Tradotto "Token non valido" in inglese
     }
 });
 
