@@ -57,6 +57,7 @@ authRoute.post('/', async (req, res) => {
         const userData = await checkUserInSheet(userEmail);
         if (userData) {
             // QUI L'ACCESSO È RIUSCITO
+            res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups"); // Aggiunto qui
             res.json({
                 success: true,
                 name: userData.name,

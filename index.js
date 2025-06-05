@@ -36,7 +36,7 @@ app.use('/api/sheets', sheetsRoutes); // NUOVO: Monta le rotte per Google Sheets
 app.post('/api/upload', upload.single('file'), driveRoutes); // Usa driveRoutes come handler per l'upload
 
 app.get('/', (req, res) => {
-    res.send('Backend online!');
+    res.send('Backend online! Ciao');
 });
 
 app.listen(PORT, () => {
