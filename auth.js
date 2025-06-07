@@ -72,10 +72,12 @@ async function logAccessActivity(name, email, profile, type) {
         const dateGMT = now.toUTCString().split(' ')[0] + ', ' + now.getUTCDate() + ' ' + now.toLocaleString('en-US', { month: 'short' }) + ' ' + now.getUTCFullYear();
         const timeGMT = now.toISOString().slice(11, 19);
 
-        // Data e ora locali basate sul fuso orario dell'utente
+        // Fuso orario locale dell'utente
         const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        const dateLocal = new Intl.DateTimeFormat('it-IT', { timeZone }).format(now);
-        const timeLocal = new Intl.DateTimeFormat('it-IT', { timeZone, hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(now);
+
+        // Data e ora locali basate sul fuso orario dell'utente
+        const dateLocal = now.toLocaleDateString('it-IT', { timeZone });
+        const timeLocal = now.toLocaleTimeString('it-IT', { timeZone });
 
         console.log('timeZone:', timeZone);
         //console.log('dateGMT:', dateGMT);
@@ -84,11 +86,11 @@ async function logAccessActivity(name, email, profile, type) {
         //console.log('timeLocal:', timeLocal);
 
         // Ordine delle colonne nel foglio Access_Logs: Nome, Email, Profilo, Data GMT, Ora GMT, Tipo Attività
-        const row = [name, email, profile, dateGMT, timeGMT, type, dateLocal, timeLocal];
+        const row = [name, email, profile, dateGMT, timeGMT, type, timeZone, dateLocal, timeLocal];
 
         await sheets.spreadsheets.values.append({
             spreadsheetId,
-            range: `${sheetName}!A:H`, // Assicurati che il range corrisponda alle tue colonne (A-F per 6 colonne)
+            range: `${sheetName}!A:I`, // Assicurati che il range corrisponda alle tue colonne (A-F per 6 colonne)
             valueInputOption: 'USER_ENTERED', // Mantiene la formattazione di Google Sheets
             resource: {
                 values: [row]
