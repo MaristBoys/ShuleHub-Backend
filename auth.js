@@ -80,6 +80,7 @@ async function logAccessActivity(name, email, profile, type) {
         const timeLocal = now.toLocaleTimeString('it-IT', { timeZone });
 
         console.log('timeZone:', timeZone);
+        console.log('TZ:', process.env.TZ);
         //console.log('dateGMT:', dateGMT);
         //console.log('timeGMT:', timeGMT);
         //console.log('dateLocal:', dateLocal);
