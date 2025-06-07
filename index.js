@@ -21,15 +21,19 @@ app.use(express.urlencoded({ extended: true })); // Per parsing di application/x
 // Configura multer per gestire i file in memoria
 const upload = multer({ storage: multer.memoryStorage() });
 
-// Monta la rotta di autenticazione al percorso /api/google-login
-app.use('/api/google-login', authRoute);
-// Monta la rotta di logout al percorso /api/logout
-app.use('/api/logout', authRoute); // Reindirizza le richieste di logout alla stessa authRoute
+// Monta authRoute una sola volta sotto un prefisso generico, es. /api/auth
+// All'interno di authRoute, avrai poi /google-login e /logout
+app.use('/api/auth', authRoute);
 
-// Monta le rotte di Google Drive
-app.use('/api/drive', driveRoutes); // Cambiato il prefisso per chiarezza
-// Monta le rotte di Google Sheets
-app.use('/api/sheets', sheetsRoutes); // NUOVO: Monta le rotte per Google Sheets
+
+// Monta la rotta di autenticazione al percorso /api/google-login
+///app.use('/api/google-login', authRoute);
+// Monta la rotta di logout al percorso /api/logout
+///app.use('/api/logout', authRoute); // Reindirizza le richieste di logout alla stessa authRoute
+
+
+app.use('/api/drive', driveRoutes); // Monta le rotte di Google Drive
+app.use('/api/sheets', sheetsRoutes); // Monta le rotte di Google Sheets
 
 // Specifica la rotta di upload con multer
 // 'file' deve corrispondere al 'name' dell'input file nel form HTML
@@ -37,6 +41,12 @@ app.post('/api/upload', upload.single('file'), driveRoutes); // Usa driveRoutes 
 
 app.get('/', (req, res) => {
     res.send('Backend online! Ciao');
+});
+
+// Gestione degli errori (opzionale, ma consigliato)
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).send('Qualcosa è andato storto nel server!');
 });
 
 app.listen(PORT, () => {

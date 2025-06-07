@@ -52,6 +52,9 @@ async function checkUserInSheet(email) {
  * @param {string} type - Il tipo di attività (es. 'login', 'logout', 'denied_login', 'invalid_token_login').
  */
 async function logAccessActivity(name, email, profile, type) {
+    // --- QUI puoi mettere un console.log per tracciare la CHIAMATA alla funzione ---
+    console.log(`[AUTH-LOG] Tentativo di loggare attività: Tipo=${type}, Email=${email}, Nome=${name}, Profilo=${profile}`);
+    
     try {
         // Autenticazione per l'accesso in scrittura a Google Sheets
         const auth = new GoogleAuth({
@@ -64,16 +67,28 @@ async function logAccessActivity(name, email, profile, type) {
         const sheetName = 'Access_Logs';
 
         const now = new Date();
-        // Formatta data e ora in GMT per coerenza nei log
+
+        // Data e ora GMT
         const dateGMT = now.toUTCString().split(' ')[0] + ', ' + now.getUTCDate() + ' ' + now.toLocaleString('en-US', { month: 'short' }) + ' ' + now.getUTCFullYear();
-        const timeGMT = now.toISOString().slice(11, 19); // HH:MM:SS in UTC
+        const timeGMT = now.toISOString().slice(11, 19);
+
+        // Data e ora locali basate sul fuso orario dell'utente
+        const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const dateLocal = new Intl.DateTimeFormat('it-IT', { timeZone }).format(now);
+        const timeLocal = new Intl.DateTimeFormat('it-IT', { timeZone, hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(now);
+
+        console.log('timeZone:', timeZone);
+        //console.log('dateGMT:', dateGMT);
+        //console.log('timeGMT:', timeGMT);
+        //console.log('dateLocal:', dateLocal);
+        //console.log('timeLocal:', timeLocal);
 
         // Ordine delle colonne nel foglio Access_Logs: Nome, Email, Profilo, Data GMT, Ora GMT, Tipo Attività
-        const row = [name, email, profile, dateGMT, timeGMT, type];
+        const row = [name, email, profile, dateGMT, timeGMT, type, dateLocal, timeLocal];
 
         await sheets.spreadsheets.values.append({
             spreadsheetId,
-            range: `${sheetName}!A:F`, // Assicurati che il range corrisponda alle tue colonne (A-F per 6 colonne)
+            range: `${sheetName}!A:H`, // Assicurati che il range corrisponda alle tue colonne (A-F per 6 colonne)
             valueInputOption: 'USER_ENTERED', // Mantiene la formattazione di Google Sheets
             resource: {
                 values: [row]
@@ -87,7 +102,7 @@ async function logAccessActivity(name, email, profile, type) {
 }
 
 // Rotta per il login con Google
-authRoute.post('/', async (req, res) => {
+authRoute.post('/google-login', async (req, res) => {
     // L'ID Token viene passato nell'header Authorization come Bearer token
     const authHeader = req.headers.authorization;
     let idToken = null;
@@ -97,11 +112,11 @@ authRoute.post('/', async (req, res) => {
 
     if (!idToken) {
         console.warn('[AUTH] Tentativo di login senza ID Token o formato non valido.');
-        return res.status(401).json({ success: false, message: 'ID Token non fornito o formato non valido.' });
+        return res.status(401).json({ success: false, message: 'Token ID not provided or invalid format.' });
     }
 
-    let userEmail = 'sconosciuto';
-    let googleName = 'sconosciuto';
+    let userEmail = 'unknown';
+    let googleName = 'unknown';
     let googlePicture = '';
     let googleId = '';
     let locale = '';
@@ -179,7 +194,7 @@ authRoute.post('/logout', async (req, res) => {
     console.log(`[AUTH] Richiesta di logout per: ${email} (Nome: ${name || 'N/A'}, Profilo: ${profile || 'N/A'})`);
 
     // Log dell'attività di logout
-    await logAccessActivity(name || 'sconosciuto', email, profile || 'N/A', 'logout');
+    await logAccessActivity(name || 'unknown', email, profile || 'N/A', 'logout');
 
     // In un'applicazione più complessa, qui si potrebbe invalidare sessioni lato server o token specifici.
     // Nel tuo setup attuale, il logout è principalmente una pulizia lato client e un'attività di log.
