@@ -50,13 +50,13 @@ async function checkUserInSheet(email) {
  * @param {string} email - L'email dell'utente.
  * @param {string} profile - Il profilo/ruolo dell'utente.
  * @param {string} type - Il tipo di attività (es. 'login', 'logout', 'denied_login', 'invalid_token_login').
- * @param {string} [timezone='N/A'] - Il fuso orario locale dell'utente.
+ * @param {string} [timeZone='N/A'] - Il fuso orario locale dell'utente.
  * @param {string} [dateLocal='N/A'] - La data locale dell'utente al momento dell'evento.
  * @param {string} [timeLocal='N/A'] - L'ora locale dell'utente al momento dell'evento.
  */
 
 async function logAccessActivity(name, email, profile, type, timeZone = 'N/A', dateLocal = 'N/A', timeLocal = 'N/A') { // AGGIUNTO timezone, dateLocal, timeLocal con default
-    console.log(`[AUTH-LOG] Tentativo di loggare attività: Tipo=${type}, Email=${email}, Nome=${name}, Profilo=${profile}, Timezone=${timezone}, DateLocal=${dateLocal}, TimeLocal=${timeLocal}`); // AGGIUNTO NEL LOG
+    console.log(`[AUTH-LOG] Tentativo di loggare attività: Tipo=${type}, Email=${email}, Nome=${name}, Profilo=${profile}, Timezone=${timeZone}, DateLocal=${dateLocal}, TimeLocal=${timeLocal}`); // AGGIUNTO NEL LOG
     
     try {
         // Autenticazione per l'accesso in scrittura a Google Sheets
