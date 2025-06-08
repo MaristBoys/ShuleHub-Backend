@@ -160,14 +160,6 @@ driveRoutes.post('/upload', upload.single('file'), async (req, res) => {
     }
 });
 
-// TODO: aggiungere /download/:id route (già presente ma da implementare)
-driveRoutes.get('/download/:id', async (req, res) => {
-    // implementazione download
-    res.json({ success: false, message: 'Download non ancora implementato' });
-});
-
-module.exports = { driveRoutes, findFolderIdByName }; // Esporta driveRoutes e findFolderIdByName se usati altrove
-
 
 // NUOVA Rotta POST per ottenere la lista di tutti i file in tutte le sottocartelle
 // con possibilità di filtro per autore
@@ -180,8 +172,8 @@ driveRoutes.post('/list', async (req, res) => {
             return res.status(500).json({ success: false, message: 'ARCHIVE_FOLDER_ID non definito nelle variabili d\'ambiente.' });
         }
 
-        const { author } = req.body;
-        console.log(`Richiesta lista file. Filtro autore: ${author || 'nessuno'}`);
+        const { profile, googleName, author } = req.body; // Receive profile, googleName, and author
+        console.log(`Richiesta lista file. Profilo: ${profile}, Google Name: ${googleName || 'N/A'}, Autore filtro: ${author || 'N/A'}`);
 
         let allFiles = [];
         let allFolders = [archiveFolderId]; // Lista di cartelle da esplorare
@@ -199,9 +191,9 @@ driveRoutes.post('/list', async (req, res) => {
 
                 response.data.files.forEach(file => {
                     if (file.mimeType === 'application/vnd.google-apps.folder') {
-                        allFolders.push(file.id); // Aggiungi la cartella alla lista per la prossima scansione
+                        allFolders.push(file.id); // Add the folder to the list for the next scan
                     } else {
-                        allFiles.push(file); // Aggiungi il file alla lista
+                        allFiles.push(file); // Add the file to the list
                     }
                 });
 
@@ -209,26 +201,44 @@ driveRoutes.post('/list', async (req, res) => {
             } while (pageToken);
         }
 
-        // Scansiona la cartella principale e tutte le sottocartelle
+        // Scan the main folder and all subfolders
         for (const folderId of allFolders) {
             await getFilesFromFolder(folderId);
         }
 
-        // Applica il filtro per autore se specificato
-        if (author) {
-            allFiles = allFiles.filter(file => 
-                file.properties && file.properties.author &&
-                file.properties.author.toLowerCase().includes(author.toLowerCase())
-            );
+
+        // Apply filtering based on profile
+        let filteredFiles = [];
+        if (profile === 'Teacher') {
+            // Teacher: filter by custom property 'author' equal to googlename
+            if (googleName) {
+                filteredFiles = allFiles.filter(file =>
+                    file.properties && file.properties.author &&
+                    file.properties.author.toLowerCase() === googleName.toLowerCase()
+                );
+                console.log(`Filtro per Teacher: Trovati ${filteredFiles.length} file per autore '${googleName}'.`);
+            } else {
+                console.warn('Google Name non fornito per il profilo Teacher. Nessun file estratto.');
+                filteredFiles = []; // No googleName provided for Teacher, so no files
+            }
+        } else if (['Admin', 'Headmaster', 'Deputy', 'Staff'].includes(profile)) {
+            // Admin, Headmaster, Deputy, Staff: no filter, they see all files
+            filteredFiles = allFiles;
+            console.log(`Filtro per ${profile}: Nessun filtro applicato, mostrati tutti ${filteredFiles.length} file.`);
+        } else {
+            // Unauthorized profile: return no files
+            console.warn(`Profilo non autorizzato (${profile}) ha tentato di listare i file. Nessun file estratto.`);
+            // No need to send 403 here, as it's already handled by frontend for display purposes
+            // We just return an empty list. The frontend will decide to show an error or empty table.
+            filteredFiles = [];
         }
 
-        res.json({ success: true, files: allFiles });
+        res.json({ success: true, files: filteredFiles });
     } catch (err) {
         console.error('Errore nella lista dei file:', err);
         res.status(500).json({ success: false, message: 'Errore nel recuperare i file: ' + err.message });
     }
 });
-
 
 
 // Rotta per il download del file
@@ -270,6 +280,7 @@ driveRoutes.get('/download/:id', async (req, res) => {
         res.status(500).json({ success: false, message: 'Error downloading file: ' + err.message });
     }
 });
+
 
 // Rotta per il delete del file
 driveRoutes.delete('/delete/:id', async (req, res) => {
