@@ -18,8 +18,10 @@ app.use(cors());
 app.use(express.json()); // Per parsing di application/json
 app.use(express.urlencoded({ extended: true })); // Per parsing di application/x-www-form-urlencoded
 
-// Configura multer per gestire i file in memoria
-const upload = multer({ storage: multer.memoryStorage() });
+// Rotta principale per verificare che il server sia online
+app.get('/', (req, res) => {
+    res.send('Backend online! Ciao');
+});
 
 // Monta authRoute una sola volta sotto un prefisso generico, es. /api/auth
 // All'interno di authRoute, avrai poi /google-login e /logout
@@ -28,14 +30,6 @@ app.use('/api/auth', authRoute);
 // Monta le rotte di Google Drive e Google Sheets
 app.use('/api/drive', driveRoutes); // Monta le rotte di Google Drive
 app.use('/api/sheets', sheetsRoutes); // Monta le rotte di Google Sheets
-
-// Specifica la rotta di upload con multer
-// 'file' deve corrispondere al 'name' dell'input file nel form HTML
-//app.post('/upload', upload.single('file'), driveRoutes); // Usa driveRoutes come handler per l'upload
-
-app.get('/', (req, res) => {
-    res.send('Backend online! Ciao');
-});
 
 // Gestione degli errori (opzionale, ma consigliato)
 app.use((err, req, res, next) => {

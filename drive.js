@@ -3,8 +3,10 @@ const express = require('express');
 const { google } = require('googleapis');
 const { GoogleAuth } = require('google-auth-library');
 const stream = require('stream'); // Necessario per l'upload di file
+const multer = require('multer'); // Importa multer per gestire l'upload dei file
 
 const driveRoutes = express.Router();
+const upload = multer({ storage: multer.memoryStorage() }); // Configura multer per gestire i file in memoria
 
 async function getDriveClient() {
     const auth = new GoogleAuth({
@@ -79,7 +81,7 @@ driveRoutes.get('/years', async (req, res) => {
 
 
 // Rotta per l'upload del file
-driveRoutes.post('/upload', async (req, res) => { 
+driveRoutes.post('/upload', upload.single('file'), async (req, res) => {
     try {
         const drive = await getDriveClient();
         const archiveFolderId = process.env.ARCHIVE_FOLDER_ID; // Cartella principale che contiene le cartelle degli anni
