@@ -37,7 +37,7 @@ app.use('/api/sheets', sheetsRoutes); // Monta le rotte di Google Sheets
 
 // Specifica la rotta di upload con multer
 // 'file' deve corrispondere al 'name' dell'input file nel form HTML
-app.post('/api/upload', upload.single('file'), driveRoutes); // Usa driveRoutes come handler per l'upload
+//app.post('/api/upload', upload.single('file'), driveRoutes); // Usa driveRoutes come handler per l'upload
 
 app.get('/', (req, res) => {
     res.send('Backend online! Ciao');

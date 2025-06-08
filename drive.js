@@ -79,7 +79,7 @@ driveRoutes.get('/years', async (req, res) => {
 
 
 // Rotta per l'upload del file
-driveRoutes.post('/', async (req, res) => { // La rotta è solo '/' perché è già montata su '/api/upload' in index.js
+driveRoutes.post('/upload', async (req, res) => { 
     try {
         const drive = await getDriveClient();
         const archiveFolderId = process.env.ARCHIVE_FOLDER_ID; // Cartella principale che contiene le cartelle degli anni
