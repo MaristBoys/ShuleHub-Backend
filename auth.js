@@ -149,7 +149,7 @@ authRoute.post('/google-login', async (req, res) => {
                 googleId: googleId
             });
             
-            // --- Passa i dati aggiuntivi a logAccessActivity ---
+            // --- Passa i dati a logAccessActivity ---
             await logAccessActivity(userData.name || googleName, userEmail, userData.profile, 'login', timeZone, dateLocal, timeLocal);
         
         } else {

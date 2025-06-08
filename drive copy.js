@@ -34,7 +34,7 @@ async function findFolderIdByName(parentFolderId, folderName) {
     }
 }
 
-// Rotta per ottenere la lista dei file nella cartella principale (ARCHIVE_FOLDER_ID)
+
 driveRoutes.get('/list', async (req, res) => {
     try {
         const drive = await getDriveClient();
@@ -95,15 +95,19 @@ driveRoutes.post('/', async (req, res) => { // La rotta è solo '/' perché è g
         const fileBuffer = req.file.buffer;
         const originalFileName = req.file.originalname;
         const mimeType = req.file.mimetype;
-       
-        // RECUPERA I METADATI DIRETTAMENTE DA req.body INVECE CHE DA 'description'
-        // Assumiamo che il frontend invii i metadati come campi separati nel FormData
-        // o come un singolo campo JSON dedicato ai metadati.
-        // Per semplicità e coerenza con il FormData del frontend, recupereremo i singoli campi.
-        const { year, author, subject, form, room, documentType, name } = req.body;
+        const descriptionString = req.body.description || '{}'; // Recupera la descrizione come stringa JSON
 
-        // Valida che i campi obbligatori siano presenti -room non obbligatorio
-        if (!year || !author || !subject || !form || !documentType) {
+        let metadata = {};
+        try {
+            metadata = JSON.parse(descriptionString);
+        } catch (e) {
+            console.error('Errore nel parsing della descrizione JSON:', e);
+            return res.status(400).json({ success: false, message: 'Formato descrizione non valido.' });
+        }
+
+        const year = metadata.year; // Estrai l'anno dalla descrizione
+
+        if (!year) {
             return res.status(400).json({ success: false, message: 'Anno non specificato nella descrizione del file.' });
         }
 
@@ -118,61 +122,36 @@ driveRoutes.post('/', async (req, res) => { // La rotta è solo '/' perché è g
         const bufferStream = new stream.PassThrough();
         bufferStream.end(fileBuffer);
 
-        // --- INIZIO: Implementazione della strategia di denominazione del file ---
-        // al momento lasciamo il nome originale
-        // --- FINE: Implementazione della strategia di denominazione del file ---
-        
-        // Definisci le custom properties
-        const properties = {
-            'year': year,
-            'author': author,
-            'subject': subject,
-            'form': form,
-            'documentType': documentType,
-            'name': name
-        };
-        
-        // Aggiungi la proprietà room: sempre presente, anche se vuota:
-        properties.room = room || '';
-        
-        
         const fileMetadata = {
             name: originalFileName,
             parents: [yearFolderId], // Carica il file nella cartella dell'anno specifico
-            properties: properties, // Imposta le proprietà personalizzate
-            description: originalFileName // nome file originale
+            description: descriptionString // Imposta la descrizione con la stringa JSON originale
         };
 
-        // Definisci il media object per l'upload
         const media = {
             mimeType: mimeType,
             body: bufferStream
         };
 
-        // Carica il file su Google Drive
-        // Utilizza il metodo files.create per caricare il file
         const uploadedFile = await drive.files.create({
             resource: fileMetadata,
             media: media,
-            // Richiedi i campi che vuoi ricevere nella risposta
-            fields: 'id, name, webContentLink, webViewLink, properties, description'
+            fields: 'id, name, webContentLink, webViewLink, description'
         });
 
-       res.json({
+        res.json({
             success: true,
-            message: 'File uploaded successfully!',
+            message: 'File caricato con successo!',
             fileId: uploadedFile.data.id,
             fileName: uploadedFile.data.name,
-            properties: uploadedFile.data.properties,
-            description: uploadedFile.data.description, 
+            description: uploadedFile.data.description,
             webContentLink: uploadedFile.data.webContentLink,
             webViewLink: uploadedFile.data.webViewLink
         });
 
-
     } catch (err) {
         console.error('Errore durante l\'upload del file:', err);
-        res.status(500).json({ success: false, message: 'Error uploading file: ' + err.message });
+        res.status(500).json({ success: false, message: 'Errore durante l\'upload del file: ' + err.message });
     }
 });
 
@@ -182,4 +161,4 @@ driveRoutes.get('/download/:id', async (req, res) => {
     res.json({ success: false, message: 'Download non ancora implementato' });
 });
 
-module.exports = { driveRoutes, findFolderIdByName }; // Esporta driveRoutes e findFolderIdByName se usati altrove
+module.exports = { driveRoutes };
