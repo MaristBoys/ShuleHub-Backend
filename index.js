@@ -25,19 +25,13 @@ const upload = multer({ storage: multer.memoryStorage() });
 // All'interno di authRoute, avrai poi /google-login e /logout
 app.use('/api/auth', authRoute);
 
-
-// Monta la rotta di autenticazione al percorso /api/google-login
-///app.use('/api/google-login', authRoute);
-// Monta la rotta di logout al percorso /api/logout
-///app.use('/api/logout', authRoute); // Reindirizza le richieste di logout alla stessa authRoute
-
-
+// Monta le rotte di Google Drive e Google Sheets
 app.use('/api/drive', driveRoutes); // Monta le rotte di Google Drive
 app.use('/api/sheets', sheetsRoutes); // Monta le rotte di Google Sheets
 
 // Specifica la rotta di upload con multer
 // 'file' deve corrispondere al 'name' dell'input file nel form HTML
-//app.post('/api/upload', upload.single('file'), driveRoutes); // Usa driveRoutes come handler per l'upload
+//app.post('/upload', upload.single('file'), driveRoutes); // Usa driveRoutes come handler per l'upload
 
 app.get('/', (req, res) => {
     res.send('Backend online! Ciao');
