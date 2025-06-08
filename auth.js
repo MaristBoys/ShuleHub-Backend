@@ -57,7 +57,7 @@ async function checkUserInSheet(email) {
 
 async function logAccessActivity(name, email, profile, type, timeZone = 'N/A', dateLocal = 'N/A', timeLocal = 'N/A') { // AGGIUNTO timezone, dateLocal, timeLocal con default
     console.log(`[AUTH-LOG] Tentativo di loggare attività: Tipo=${type}, Email=${email}, Nome=${name}, Profilo=${profile}, Timezone=${timeZone}, DateLocal=${dateLocal}, TimeLocal=${timeLocal}`); // AGGIUNTO NEL LOG
-    
+
     try {
         // Autenticazione per l'accesso in scrittura a Google Sheets
         const auth = new GoogleAuth({
@@ -148,10 +148,10 @@ authRoute.post('/google-login', async (req, res) => {
                 locale: locale,
                 googleId: googleId
             });
-            
+
             // --- Passa i dati a logAccessActivity ---
-            await logAccessActivity(userData.name || googleName, userEmail, userData.profile, 'login', timeZone, dateLocal, timeLocal);
-        
+            await logAccessActivity(googleName, userEmail, userData.profile, 'login', timeZone, dateLocal, timeLocal);
+
         } else {
             // Utente autenticato MA NON AUTORIZZATO (non presente nella whitelist)
             console.warn(`[AUTH] Accesso negato per ${userEmail}. Utente non nella whitelist.`);
@@ -181,7 +181,7 @@ authRoute.post('/google-login', async (req, res) => {
 authRoute.post('/logout', async (req, res) => {
     // Per il logout, non è necessario l'idToken. I dati dell'utente per il log
     // vengono passati dal frontend nel corpo della richiesta.
-     // --- NUOVO: Estrai timezone, dateLocal, timeLocal ---
+    // --- NUOVO: Estrai timezone, dateLocal, timeLocal ---
     const { email, name, profile, timeZone, dateLocal, timeLocal } = req.body;
 
     if (!email) {
