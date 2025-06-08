@@ -169,24 +169,6 @@ driveRoutes.get('/download/:id', async (req, res) => {
 module.exports = { driveRoutes, findFolderIdByName }; // Esporta driveRoutes e findFolderIdByName se usati altrove
 
 
-// Rotta per ottenere la lista dei file nella cartella principale (ARCHIVE_FOLDER_ID)
-driveRoutes.get('/list', async (req, res) => {
-    try {
-        const drive = await getDriveClient();
-        const folderId = process.env.ARCHIVE_FOLDER_ID; // Assicurati che questo ID sia definito nelle tue variabili d'ambiente
-
-        const response = await drive.files.list({
-            q: `'${folderId}' in parents`,
-            fields: 'files(id, name, description, mimeType, createdTime, modifiedTime)'
-        });
-
-        res.json({ success: true, files: response.data.files });
-    } catch (err) {
-        console.error('Errore lista file:', err);
-        res.status(500).json({ success: false, message: 'Errore nel leggere i file' });
-    }
-});
-
 // NUOVA Rotta POST per ottenere la lista di tutti i file in tutte le sottocartelle
 // con possibilità di filtro per autore
 driveRoutes.post('/list', async (req, res) => {
