@@ -160,14 +160,6 @@ driveRoutes.post('/upload', upload.single('file'), async (req, res) => {
     }
 });
 
-// TODO: aggiungere /download/:id route (già presente ma da implementare)
-driveRoutes.get('/download/:id', async (req, res) => {
-    // implementazione download
-    res.json({ success: false, message: 'Download non ancora implementato' });
-});
-
-module.exports = { driveRoutes, findFolderIdByName }; // Esporta driveRoutes e findFolderIdByName se usati altrove
-
 
 // NUOVA Rotta POST per ottenere la lista di tutti i file in tutte le sottocartelle
 // con possibilità di filtro per autore
@@ -180,78 +172,68 @@ driveRoutes.post('/list', async (req, res) => {
             return res.status(500).json({ success: false, message: 'ARCHIVE_FOLDER_ID non definito nelle variabili d\'ambiente.' });
         }
 
-        // Estrai il filtro autore dal corpo della richiesta (se presente)
-        const { author } = req.body;
-        console.log(`Richiesta lista file. Filtro autore: ${author || 'nessuno'}`);
+        const { profile, googleName, author } = req.body; // Receive profile, googleName, and author
+        console.log(`Richiesta lista file. Profilo: ${profile}, Google Name: ${googleName || 'N/A'}, Autore filtro: ${author || 'N/A'}`);
 
         let allFiles = [];
-        let pageToken = null;
+        let allFolders = [archiveFolderId]; // Lista di cartelle da esplorare
 
-        do {
-            // Cerca tutti i file e le cartelle sotto ARCHIVE_FOLDER_ID e tutte le loro sottocartelle
-            // 'trashed = false' per escludere i file nel cestino
-            const response = await drive.files.list({
-                q: `'${archiveFolderId}' in parents or ('${archiveFolderId}' in parents and mimeType = 'application/vnd.google-apps.folder')`,
-                // Espandi la ricerca per includere tutti i file e le cartelle sotto l'ID della cartella principale.
-                // Usiamo sharedWithMe=false per escludere file non di proprietà diretta o condivisi esplicitamente.
-                // fields: 'nextPageToken, files(id, name, description, mimeType, createdTime, modifiedTime, webContentLink, webViewLink, properties)', // Richiede le proprietà custom
-                // Aumentiamo i campi richiesti per includere tutte le proprietà custom,
-                // webContentLink (per download) e webViewLink (per visualizzazione).
-                fields: 'nextPageToken, files(id, name, description, mimeType, createdTime, modifiedTime, webContentLink, webViewLink, properties)',
-                spaces: 'drive',
-                pageToken: pageToken
-            });
+        async function getFilesFromFolder(folderId) {
+            let pageToken = null;
 
-            // Filtra solo i file (escludi le cartelle)
-            const currentFiles = response.data.files.filter(file => file.mimeType !== 'application/vnd.google-apps.folder');
-
-            // Applica il filtro per autore se specificato
-            if (author) {
-                const filteredByAuthor = currentFiles.filter(file => {
-                    // Controlla se le proprietà esistono e se l'autore corrisponde (case-insensitive)
-                    return file.properties && file.properties.author &&
-                           file.properties.author.toLowerCase().includes(author.toLowerCase());
+            do {
+                const response = await drive.files.list({
+                    q: `'${folderId}' in parents and trashed = false`,
+                    fields: 'nextPageToken, files(id, name, description, mimeType, createdTime, modifiedTime, webContentLink, webViewLink, properties, parents)',
+                    spaces: 'drive',
+                    pageToken: pageToken
                 });
-                allFiles = allFiles.concat(filteredByAuthor);
-            } else {
-                allFiles = allFiles.concat(currentFiles);
-            }
 
-            pageToken = response.nextPageToken;
-
-        } while (pageToken);
-
-
-        // Per ogni file, cerca il percorso completo della cartella (opzionale, se serve)
-        // Questo può essere costoso in termini di performance se ci sono molti file/cartelle
-        // Se non è strettamente necessario il "path", puoi rimuovere questa parte per velocità.
-        /*
-        for (const file of allFiles) {
-            if (file.parents && file.parents.length > 0) {
-                let currentParentId = file.parents[0];
-                let pathParts = [];
-                // Risali la gerarchia delle cartelle fino a raggiungere la cartella principale
-                while (currentParentId && currentParentId !== archiveFolderId) {
-                    try {
-                        const parentFolder = await drive.files.get({
-                            fileId: currentParentId,
-                            fields: 'name, parents'
-                        });
-                        pathParts.unshift(parentFolder.data.name); // Aggiungi all'inizio del percorso
-                        currentParentId = parentFolder.data.parents ? parentFolder.data.parents[0] : null;
-                    } catch (err) {
-                        console.warn(`Could not retrieve parent folder for ID: ${currentParentId}`, err.message);
-                        currentParentId = null; // Ferma il loop se c'è un errore
+                response.data.files.forEach(file => {
+                    if (file.mimeType === 'application/vnd.google-apps.folder') {
+                        allFolders.push(file.id); // Add the folder to the list for the next scan
+                    } else {
+                        allFiles.push(file); // Add the file to the list
                     }
-                }
-                file.fullPath = '/' + pathParts.join('/');
-            } else {
-                file.fullPath = '/';
-            }
-        }
-        */
+                });
 
-        res.json({ success: true, files: allFiles });
+                pageToken = response.nextPageToken;
+            } while (pageToken);
+        }
+
+        // Scan the main folder and all subfolders
+        for (const folderId of allFolders) {
+            await getFilesFromFolder(folderId);
+        }
+
+
+        // Apply filtering based on profile
+        let filteredFiles = [];
+        if (profile === 'Teacher') {
+            // Teacher: filter by custom property 'author' equal to googlename
+            if (googleName) {
+                filteredFiles = allFiles.filter(file =>
+                    file.properties && file.properties.author &&
+                    file.properties.author.toLowerCase() === googleName.toLowerCase()
+                );
+                console.log(`Filtro per Teacher: Trovati ${filteredFiles.length} file per autore '${googleName}'.`);
+            } else {
+                console.warn('Google Name non fornito per il profilo Teacher. Nessun file estratto.');
+                filteredFiles = []; // No googleName provided for Teacher, so no files
+            }
+        } else if (['Admin', 'Headmaster', 'Deputy', 'Staff'].includes(profile)) {
+            // Admin, Headmaster, Deputy, Staff: no filter, they see all files
+            filteredFiles = allFiles;
+            console.log(`Filtro per ${profile}: Nessun filtro applicato, mostrati tutti ${filteredFiles.length} file.`);
+        } else {
+            // Unauthorized profile: return no files
+            console.warn(`Profilo non autorizzato (${profile}) ha tentato di listare i file. Nessun file estratto.`);
+            // No need to send 403 here, as it's already handled by frontend for display purposes
+            // We just return an empty list. The frontend will decide to show an error or empty table.
+            filteredFiles = [];
+        }
+
+        res.json({ success: true, files: filteredFiles });
     } catch (err) {
         console.error('Errore nella lista dei file:', err);
         res.status(500).json({ success: false, message: 'Errore nel recuperare i file: ' + err.message });
@@ -298,6 +280,7 @@ driveRoutes.get('/download/:id', async (req, res) => {
         res.status(500).json({ success: false, message: 'Error downloading file: ' + err.message });
     }
 });
+
 
 // Rotta per il delete del file
 driveRoutes.delete('/delete/:id', async (req, res) => {

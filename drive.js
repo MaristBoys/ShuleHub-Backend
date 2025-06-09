@@ -11,7 +11,7 @@ const upload = multer({ storage: multer.memoryStorage() }); // Configura multer 
 async function getDriveClient() {
     const auth = new GoogleAuth({
         credentials: JSON.parse(process.env.GOOGLE_SERVICE_KEY),
-        scopes: ['https://www.googleapis.com/auth/drive.file', 'https://www.googleapis.com/auth/drive.readonly'] // drive.file per accesso specifico ai file creati/aperti dall'app, drive.readonly per leggere cartelle
+        scopes: ['https://www.googleapis.com/auth/drive.file', 'https://www.googleapis.com/auth/drive.readonly', 'https://www.googleapis.com/auth/drive.metadata.readonly'] // drive.file per accesso specifico ai file creati/aperti dall'app, drive.readonly per leggere cartelle, drive.metadata.readonly per info su spazio
     });
     return google.drive({ version: 'v3', auth });
 }
@@ -297,5 +297,68 @@ driveRoutes.delete('/delete/:id', async (req, res) => {
     }
 });
 
+// NUOVA ROTTA: Ottieni informazioni sullo spazio di archiviazione di Google Drive
+// Funzione helper per convertire byte in un formato leggibile (KB, MB, GB)
+function formatBytes(bytes, decimals = 2) {
+    if (bytes === 0) return '0 Bytes';
 
-module.exports = { driveRoutes, findFolderIdByName }; // Esporta driveRoutes e findFolderIdByName se usati altrove
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
+
+
+// NUOVA ROTTA: Ottieni informazioni sullo spazio di archiviazione di Google Drive
+driveRoutes.get('/storage-info', async (req, res) => {
+    try {
+        const drive = await getDriveClient();
+        const response = await drive.about.get({
+            fields: 'storageQuota' // Richiede solo il campo storageQuota
+        });
+
+        const storageQuota = response.data.storageQuota;
+
+        if (storageQuota) {
+            const totalBytes = parseInt(storageQuota.limit, 10);
+            const usedBytes = parseInt(storageQuota.usage, 10);
+            const trashBytes = parseInt(storageQuota.usageInDriveTrash, 10);
+            const availableBytes = totalBytes - usedBytes;
+
+            res.json({
+                success: true,
+                // Valori in byte
+                total_bytes: totalBytes,
+                used_bytes: usedBytes,
+                available_bytes: availableBytes,
+                trash_bytes: trashBytes,
+                // Valori formattati per la visualizzazione
+                total: formatBytes(totalBytes),
+                used: formatBytes(usedBytes),
+                available: formatBytes(availableBytes),
+                trash: formatBytes(trashBytes),
+                // Puoi anche restituire i valori originali per debug
+                raw: storageQuota
+            });
+        } else {
+            res.status(404).json({
+                success: false,
+                message: 'Storage quota information not found.'
+            });
+        }
+    } catch (err) {
+        console.error('Errore nel recupero delle informazioni di storage:', err);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching storage information: ' + err.message
+        });
+    }
+});
+
+
+module.exports = {
+    driveRoutes
+};
