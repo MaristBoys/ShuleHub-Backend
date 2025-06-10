@@ -120,6 +120,16 @@ authRoute.post('/google-login', async (req, res) => {
     // --- Estrai i dati aggiuntivi dal corpo della richiesta ---
     const { timeZone, dateLocal, timeLocal, deviceInfo } = req.body;
 
+    // --- GESTIONE DEI NUOVI DATI deviceInfo ---
+    if (deviceInfo) {
+        console.log(`[LOG da inizio rotta login] Info Dispositivo:`);
+        console.log(`    Tipo: ${deviceInfo.deviceType}`);
+        console.log(`    OS: ${deviceInfo.os} ${deviceInfo.osVersion}`);
+        console.log(`    Browser: ${deviceInfo.browser} ${deviceInfo.browserVersion}`);
+    }
+    else { console.log(`[LOG] Info Dispositivo: N/A`); }
+
+
     if (!idToken) {
         console.warn('[AUTH] Tentativo di login senza ID Token o formato non valido.');
         return res.status(401).json({ success: false, message: 'Token ID not provided or invalid format.' });
