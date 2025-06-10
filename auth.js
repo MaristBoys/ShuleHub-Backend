@@ -53,9 +53,11 @@ async function checkUserInSheet(email) {
  * @param {string} [timeZone='N/A'] - Il fuso orario locale dell'utente.
  * @param {string} [dateLocal='N/A'] - La data locale dell'utente al momento dell'evento.
  * @param {string} [timeLocal='N/A'] - L'ora locale dell'utente al momento dell'evento.
+ * @param {Object} [deviceInfo] - (NUOVO PARAMETRO OPZIONALE) Oggetto contenente i dettagli del dispositivo (deviceType, os, browser, ecc.).
+    * @returns {Promise<void>}
  */
 
-async function logAccessActivity(name, email, profile, type, timeZone = 'N/A', dateLocal = 'N/A', timeLocal = 'N/A') { // AGGIUNTO timezone, dateLocal, timeLocal con default
+async function logAccessActivity(name, email, profile, type, timeZone = 'N/A', dateLocal = 'N/A', timeLocal = 'N/A', deviceInfo) { // AGGIUNTO timezone, dateLocal, timeLocal con default
     console.log(`[AUTH-LOG] Tentativo di loggare attività: Tipo=${type}, Email=${email}, Nome=${name}, Profilo=${profile}, Timezone=${timeZone}, DateLocal=${dateLocal}, TimeLocal=${timeLocal}`); // AGGIUNTO NEL LOG
 
     try {
@@ -77,11 +79,12 @@ async function logAccessActivity(name, email, profile, type, timeZone = 'N/A', d
         //console.log('TZ:', process.env.TZ); //verifica se variabile ambiente TZ di Render = undefined allora prende GMT
 
         // Ordine delle colonne nel foglio Access_Logs: Nome, Email, Profilo, Data GMT, Ora GMT, Tipo Attività
-        const row = [name, email, profile, dateGMT, timeGMT, type, timeZone, dateLocal, timeLocal];
+        // Aggiungi timezone, dateLocal, timeLocal e deviceInfo che comprende più dettagli sul dispositivo
+        const row = [name, email, profile, dateGMT, timeGMT, type, timeZone, dateLocal, timeLocal, deviceInfo.deviceType, deviceInfo.os,  deviceInfo.osVersion, deviceInfo.browser, deviceInfo.browserVersion  ];
 
         await sheets.spreadsheets.values.append({
             spreadsheetId,
-            range: `${sheetName}!A:I`, // Assicurati che il range corrisponda alle tue colonne (A-F per 6 colonne)
+            range: `${sheetName}!A:N`, // Assicurati che il range corrisponda alle tue colonne (A-F per 6 colonne)
             valueInputOption: 'USER_ENTERED', // Mantiene la formattazione di Google Sheets
             resource: {
                 values: [row]
@@ -104,7 +107,7 @@ authRoute.post('/google-login', async (req, res) => {
     }
 
     // --- Estrai i dati aggiuntivi dal corpo della richiesta ---
-    const { timeZone, dateLocal, timeLocal } = req.body;
+    const { timeZone, dateLocal, timeLocal, deviceInfo } = req.body;
 
     if (!idToken) {
         console.warn('[AUTH] Tentativo di login senza ID Token o formato non valido.');
@@ -150,7 +153,7 @@ authRoute.post('/google-login', async (req, res) => {
             });
 
             // --- Passa i dati a logAccessActivity ---
-            await logAccessActivity(googleName, userEmail, userData.profile, 'login', timeZone, dateLocal, timeLocal);
+            await logAccessActivity(googleName, userEmail, userData.profile, 'login', timeZone, dateLocal, timeLocal, deviceInfo);
 
         } else {
             // Utente autenticato MA NON AUTORIZZATO (non presente nella whitelist)
@@ -166,14 +169,14 @@ authRoute.post('/google-login', async (req, res) => {
                 googleId: googleId
             });
             // --- Passa i dati aggiuntivi a logAccessActivity per il denied_login ---
-            await logAccessActivity(googleName, userEmail, 'N/A', 'denied_login', timeZone, dateLocal, timeLocal);
+            await logAccessActivity(googleName, userEmail, 'N/A', 'denied_login', timeZone, dateLocal, timeLocal, deviceInfo);
         }
     } catch (err) {
         // Gestione di errori nella verifica del token (es. token scaduto, non valido)
         console.error('[AUTH] Errore durante la verifica dell\'ID Token:', err.message);
         res.status(401).json({ success: false, message: 'ID Token not provided or invalid.' });
         // --- NUOVO: Passa i dati aggiuntivi a logAccessActivity per l'invalid_token_login ---
-        await logAccessActivity(googleName, userEmail, 'N/A', 'invalid_token_login', timeZone, dateLocal, timeLocal);
+        await logAccessActivity(googleName, userEmail, 'N/A', 'invalid_token_login', timeZone, dateLocal, timeLocal, deviceInfo);
     }
 });
 
@@ -182,7 +185,7 @@ authRoute.post('/logout', async (req, res) => {
     // Per il logout, non è necessario l'idToken. I dati dell'utente per il log
     // vengono passati dal frontend nel corpo della richiesta.
     // --- NUOVO: Estrai timezone, dateLocal, timeLocal ---
-    const { email, name, profile, timeZone, dateLocal, timeLocal } = req.body;
+    const { email, name, profile, timeZone, dateLocal, timeLocal, deviceInfo} = req.body;
 
     if (!email) {
         console.warn('[AUTH] Richiesta di logout ricevuta senza email utente fornita.');
@@ -193,7 +196,7 @@ authRoute.post('/logout', async (req, res) => {
     console.log(`[AUTH] Richiesta di logout per: ${email} (Nome: ${name || 'N/A'}, Profilo: ${profile || 'N/A'})`);
 
     // Log dell'attività di logout
-    await logAccessActivity(name || 'sconosciuto', email, profile || 'N/A', 'logout', timeZone, dateLocal, timeLocal);
+    await logAccessActivity(name || 'sconosciuto', email, profile || 'N/A', 'logout', timeZone, dateLocal, timeLocal, deviceInfo);
 
     // In un'applicazione più complessa, qui si potrebbe invalidare sessioni lato server o token specifici.
     // Nel tuo setup attuale, il logout è principalmente una pulizia lato client e un'attività di log.
