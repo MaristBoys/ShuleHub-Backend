@@ -2,21 +2,20 @@
 // avviare il server Express
 // gestire le rotte per l'autenticazione e Google Drive
 const express = require('express');
+const app = express();
 const cors = require('cors');
 const multer = require('multer'); // Importa multer
+
+app.use(cors());
+app.use(express.json()); // Per parsing di application/json
+app.use(express.urlencoded({ extended: true })); // Per parsing di application/x-www-form-urlencoded
 
 const { authRoute } = require('./auth');
 const { driveRoutes } = require('./drive');
 const { sheetsRoutes } = require('./sheets'); // NUOVO: Importa le rotte per Google Sheets
 
-const app = express();
 const PORT = process.env.PORT || 3000;
-
 console.log(`Porta assegnata: ${PORT}`);
-
-app.use(cors());
-app.use(express.json()); // Per parsing di application/json
-app.use(express.urlencoded({ extended: true })); // Per parsing di application/x-www-form-urlencoded
 
 // Rotta principale per verificare che il server sia online
 app.get('/', (req, res) => {
