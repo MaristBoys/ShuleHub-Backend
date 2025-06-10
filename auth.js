@@ -117,8 +117,12 @@ authRoute.post('/google-login', async (req, res) => {
         idToken = authHeader.split(' ')[1];
     }
 
+    
+    console.log("DEBUG: `req.body` at start of /google-login route:", req.body); // AGGIUNGI QUESTO
+    
     // --- Estrai i dati aggiuntivi dal corpo della richiesta ---
     const { timeZone, dateLocal, timeLocal, deviceInfo } = req.body;
+    console.log("DEBUG: `deviceInfo` after destructuring:", deviceInfo); // AGGIUNGI ANCHE QUESTO
 
     // --- GESTIONE DEI NUOVI DATI deviceInfo ---
     if (deviceInfo) {
