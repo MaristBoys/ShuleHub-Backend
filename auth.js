@@ -63,9 +63,9 @@ async function logAccessActivity(name, email, profile, type, timeZone = 'N/A', d
     // --- GESTIONE DEI NUOVI DATI deviceInfo ---
     if (deviceInfo) {
         console.log(`[LOG] Info Dispositivo:`);
-        console.log(`    Tipo: ${deviceInfo.deviceType}`);
-        console.log(`    OS: ${deviceInfo.os} ${deviceInfo.osVersion}`);
-        console.log(`    Browser: ${deviceInfo.browser} ${deviceInfo.browserVersion}`);
+        console.log(`    Tipo: ${deviceType}`);
+        console.log(`    OS: ${os} ${osVersion}`);
+        console.log(`    Browser: ${browser} ${browserVersion}`);
     }
     else { console.log(`[LOG] Info Dispositivo: N/A`); }
 
@@ -90,7 +90,7 @@ async function logAccessActivity(name, email, profile, type, timeZone = 'N/A', d
 
         // Ordine delle colonne nel foglio Access_Logs: Nome, Email, Profilo, Data GMT, Ora GMT, Tipo Attività
         // Aggiungi timezone, dateLocal, timeLocal e deviceInfo che comprende più dettagli sul dispositivo
-        const row = [name, email, profile, dateGMT, timeGMT, type, timeZone, dateLocal, timeLocal, deviceInfo.deviceType, deviceType, os, osVersion, browser, browserVersion];
+        const row = [name, email, profile, dateGMT, timeGMT, type, timeZone, dateLocal, timeLocal, deviceType, deviceType, os, osVersion, browser, browserVersion];
 
         await sheets.spreadsheets.values.append({
             spreadsheetId,
