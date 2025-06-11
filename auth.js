@@ -60,15 +60,6 @@ async function checkUserInSheet(email) {
 async function logAccessActivity(name, email, profile, type, timeZone = 'N/A', dateLocal = 'N/A', timeLocal = 'N/A', deviceType, os, osVersion, browser, browserVersion) { // AGGIUNTO timezone, dateLocal, timeLocal con default
     console.log(`[AUTH-LOG] Tentativo di loggare attività: Tipo=${type}, Email=${email}, Nome=${name}, Profilo=${profile}, Timezone=${timeZone}, DateLocal=${dateLocal}, TimeLocal=${timeLocal}`); // AGGIUNTO NEL LOG
 
- /*   // --- GESTIONE DEI NUOVI DATI deviceInfo ---
-    if (deviceInfo) {
-        console.log(`[LOG] Info Dispositivo:`);
-        console.log(`    Tipo: ${deviceType}`);
-        console.log(`    OS: ${os} ${osVersion}`);
-        console.log(`    Browser: ${browser} ${browserVersion}`);
-    }
-    else { console.log(`[LOG] Info Dispositivo: N/A`); }
-*/
 
     try {
         // Autenticazione per l'accesso in scrittura a Google Sheets
@@ -90,7 +81,7 @@ async function logAccessActivity(name, email, profile, type, timeZone = 'N/A', d
 
         // Ordine delle colonne nel foglio Access_Logs: Nome, Email, Profilo, Data GMT, Ora GMT, Tipo Attività
         // Aggiungi timezone, dateLocal, timeLocal e deviceInfo che comprende più dettagli sul dispositivo
-        const row = [name, email, profile, dateGMT, timeGMT, type, timeZone, dateLocal, timeLocal, deviceType, deviceType, os, osVersion, browser, browserVersion];
+        const row = [name, email, profile, dateGMT, timeGMT, type, timeZone, dateLocal, timeLocal, deviceType, os, osVersion, browser, browserVersion];
 
         await sheets.spreadsheets.values.append({
             spreadsheetId,
@@ -115,9 +106,6 @@ l’esecuzione può rientrare nel ciclo e tentare di inviare un’altra risposta
   in cui la logica continua a lavorare "dopo" che il client ha già ricevuto la risposta.
 -- Soluzione: loaAccessActivity() deve essere chiamata prima di res.json() e gestire gli errori in modo da non bloccare il flusso.
   */
-
-
-
 
 
 
@@ -287,6 +275,9 @@ authRoute.post('/logout', async (req, res) => {
     // Per il logout, non è necessario l'idToken. I dati dell'utente per il log
     // vengono passati dal frontend nel corpo della richiesta.
     // --- NUOVO: Estrai timezone, dateLocal, timeLocal ---
+    
+    console.log("DEBUG: `req.body` at start of /logout route:", req.body); 
+    
     const { email, name, profile, timeZone, dateLocal, timeLocal, deviceInfo } = req.body;
     const { deviceType, os, osVersion, browser, browserVersion } = deviceInfo || {};
 
@@ -301,7 +292,7 @@ authRoute.post('/logout', async (req, res) => {
     
     try{
     // Log dell'attività di logout
-    await logAccessActivity(name || 'sconosciuto', email, profile || 'N/A', 'logout', timeZone, dateLocal, timeLocal, deviceType, os, osVersion, browser, browserVersion);
+    await logAccessActivity(name || 'unknown', email, profile || 'N/A', 'logout', timeZone, dateLocal, timeLocal, deviceType, os, osVersion, browser, browserVersion);
     }
     catch (error) {
         console.error('[AUTH] Errore durante il log dell\'attività di logout:', error.message);
