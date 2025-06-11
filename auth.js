@@ -57,7 +57,7 @@ async function checkUserInSheet(email) {
     * @returns {Promise<void>}
  */
 
-async function logAccessActivity(name, email, profile, type, timeZone = 'N/A', dateLocal = 'N/A', timeLocal = 'N/A',  deviceType, os, osVersion, browser, browserVersion) { // AGGIUNTO timezone, dateLocal, timeLocal con default
+async function logAccessActivity(name, email, profile, type, timeZone = 'N/A', dateLocal = 'N/A', timeLocal = 'N/A', deviceType, os, osVersion, browser, browserVersion) { // AGGIUNTO timezone, dateLocal, timeLocal con default
     console.log(`[AUTH-LOG] Tentativo di loggare attività: Tipo=${type}, Email=${email}, Nome=${name}, Profilo=${profile}, Timezone=${timeZone}, DateLocal=${dateLocal}, TimeLocal=${timeLocal}`); // AGGIUNTO NEL LOG
 
     // --- GESTIONE DEI NUOVI DATI deviceInfo ---
@@ -90,7 +90,7 @@ async function logAccessActivity(name, email, profile, type, timeZone = 'N/A', d
 
         // Ordine delle colonne nel foglio Access_Logs: Nome, Email, Profilo, Data GMT, Ora GMT, Tipo Attività
         // Aggiungi timezone, dateLocal, timeLocal e deviceInfo che comprende più dettagli sul dispositivo
-        const row = [name, email, profile, dateGMT, timeGMT, type, timeZone, dateLocal, timeLocal, deviceInfo.deviceType,  deviceType, os, osVersion, browser, browserVersion];
+        const row = [name, email, profile, dateGMT, timeGMT, type, timeZone, dateLocal, timeLocal, deviceInfo.deviceType, deviceType, os, osVersion, browser, browserVersion];
 
         await sheets.spreadsheets.values.append({
             spreadsheetId,
@@ -107,6 +107,19 @@ async function logAccessActivity(name, email, profile, type, timeZone = 'N/A', d
         // Non lanciamo l'errore qui per non bloccare il flusso di login/logout se il logging fallisce
     }
 }
+
+/*Problema: res.json() viene chiamato prima di await logAccessActivity(...). 
+Ma se quest’ultima funzione lancia un errore, 
+l’esecuzione può rientrare nel ciclo e tentare di inviare un’altra risposta,
+ oppure semplicemente ci si ritrova in uno stato incerto
+  in cui la logica continua a lavorare "dopo" che il client ha già ricevuto la risposta.
+-- Soluzione: loaAccessActivity() deve essere chiamata prima di res.json() e gestire gli errori in modo da non bloccare il flusso.
+  */
+
+
+
+
+
 
 // Rotta per il login con Google
 authRoute.post('/google-login', async (req, res) => {
@@ -126,6 +139,7 @@ authRoute.post('/google-login', async (req, res) => {
 
     console.log("DEBUG: `deviceInfo` after destructuring:", deviceInfo); // AGGIUNGI ANCHE QUESTO
 
+
     // --- GESTIONE DEI NUOVI DATI deviceInfo ---
     if (deviceInfo) {
         console.log(`[LOG da inizio rotta login] Info Dispositivo:`);
@@ -136,20 +150,21 @@ authRoute.post('/google-login', async (req, res) => {
     else { console.log(`[LOG] Info Dispositivo: N/A`); }
 
 
-    if (deviceInfo) {
-        console.log(`[LOG dopo destrutturazione con proprietà:`);
-        console.log(deviceInfo.deviceType);
-        console.log(deviceInfo.os);
-        console.log(deviceInfo.browser);
-    }
-    else { console.log(`[LOG] Info Dispositivo2: N/A`); }
-
-
-
     if (!idToken) {
         console.warn('[AUTH] Tentativo di login senza ID Token o formato non valido.');
         return res.status(401).json({ success: false, message: 'Token ID not provided or invalid format.' });
     }
+
+    if (!idToken) {
+        console.warn('[AUTH] Token mancante o malformato.');
+        try {
+            await logAccessActivity('N/A', 'unknown', 'N/A', 'invalid_token_login', timeZone, dateLocal, timeLocal, deviceType, os, osVersion, browser, browserVersion);
+        } catch (err) {
+            console.warn('[AUTH] Errore nel logging (token assente):', err.message);
+        }
+        return res.status(401).json({ success: false, message: 'Token ID not provided or invalid format.' });
+    }
+
 
     let userEmail = 'unknown';
     let googleName = 'unknown';
@@ -175,6 +190,60 @@ authRoute.post('/google-login', async (req, res) => {
         const userData = await checkUserInSheet(userEmail);
 
         if (userData) {
+            // Logging PRIMA della risposta
+            try {
+                await logAccessActivity(googleName, userEmail, userData.profile, 'login', timeZone, dateLocal, timeLocal, deviceType, os, osVersion, browser, browserVersion);
+            } catch (err) {
+                console.warn('[AUTH] Errore nel logging del login autorizzato:', err.message);
+            }
+
+            res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
+            return res.json({
+                success: true,
+                name: userData.name,
+                profile: userData.profile,
+                googleName,
+                googlePicture,
+                email: userEmail,
+                emailVerified: payload.email_verified,
+                locale,
+                googleId
+            });
+
+        } else {
+            // Logging PRIMA della risposta
+            try {
+                await logAccessActivity(googleName, userEmail, 'N/A', 'denied_login', timeZone, dateLocal, timeLocal, deviceType, os, osVersion, browser, browserVersion);
+            } catch (err) {
+                console.warn('[AUTH] Errore nel logging del denied_login:', err.message);
+            }
+
+            return res.status(403).json({
+                success: false,
+                message: `Access denied. The account ${userEmail} is not on the authorized users list.`,
+                googleName,
+                googlePicture,
+                email: userEmail,
+                emailVerified: payload.email_verified,
+                locale,
+                googleId
+            });
+        }
+    } catch (err) {
+        console.error('[AUTH] Errore nella verifica del token:', err.message);
+        try {
+            await logAccessActivity(googleName, userEmail, 'N/A', 'invalid_token_login', timeZone, dateLocal, timeLocal, deviceType, os, osVersion, browser, browserVersion);
+        } catch (logErr) {
+            console.warn('[AUTH] Errore nel logging del token non valido:', logErr.message);
+        }
+        return res.status(401).json({ success: false, message: 'ID Token not provided or invalid.' });
+    }
+});
+
+
+         
+       
+        /*if (userData) {
             // Utente autenticato E AUTORIZZATO (presente nella whitelist)
             res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups"); // Necessario per il flusso GSI in alcuni browser
             res.json({
@@ -195,6 +264,8 @@ authRoute.post('/google-login', async (req, res) => {
         } else {
             // Utente autenticato MA NON AUTORIZZATO (non presente nella whitelist)
             console.warn(`[AUTH] Accesso negato per ${userEmail}. Utente non nella whitelist.`);
+            // --- Passa i dati aggiuntivi a logAccessActivity per il denied_login ---
+            await logAccessActivity(googleName, userEmail, 'N/A', 'denied_login', timeZone, dateLocal, timeLocal, deviceType, os, osVersion, browser, browserVersion);
             res.status(403).json({ // 403 Forbidden indica che l'utente è autenticato ma non autorizzato
                 success: false,
                 message: `Access denied. The account ${payload.email} is not on the authorized users list.`,
@@ -205,17 +276,16 @@ authRoute.post('/google-login', async (req, res) => {
                 locale: locale,
                 googleId: googleId
             });
-            // --- Passa i dati aggiuntivi a logAccessActivity per il denied_login ---
-            await logAccessActivity(googleName, userEmail, 'N/A', 'denied_login', timeZone, dateLocal, timeLocal, deviceType, os, osVersion, browser, browserVersion);
         }
     } catch (err) {
         // Gestione di errori nella verifica del token (es. token scaduto, non valido)
         console.error('[AUTH] Errore durante la verifica dell\'ID Token:', err.message);
-        res.status(401).json({ success: false, message: 'ID Token not provided or invalid.' });
         // --- NUOVO: Passa i dati aggiuntivi a logAccessActivity per l'invalid_token_login ---
+        res.status(401).json({ success: false, message: 'ID Token not provided or invalid.' });
         await logAccessActivity(googleName, userEmail, 'N/A', 'invalid_token_login', timeZone, dateLocal, timeLocal, deviceType, os, osVersion, browser, browserVersion);
+
     }
-});
+});*/
 
 // Rotta per il logout
 authRoute.post('/logout', async (req, res) => {
@@ -233,9 +303,15 @@ authRoute.post('/logout', async (req, res) => {
 
     console.log(`[AUTH] Richiesta di logout per: ${email} (Nome: ${name || 'N/A'}, Profilo: ${profile || 'N/A'})`);
 
+    
+    try{
     // Log dell'attività di logout
     await logAccessActivity(name || 'sconosciuto', email, profile || 'N/A', 'logout', timeZone, dateLocal, timeLocal, deviceType, os, osVersion, browser, browserVersion);
-
+    }
+    catch (error) {
+        console.error('[AUTH] Errore durante il log dell\'attività di logout:', error.message);
+        // Non blocchiamo il flusso di logout se il logging fallisce
+    }
     // In un'applicazione più complessa, qui si potrebbe invalidare sessioni lato server o token specifici.
     // Nel tuo setup attuale, il logout è principalmente una pulizia lato client e un'attività di log.
     res.json({ success: true, message: 'Logout successfull.' });
