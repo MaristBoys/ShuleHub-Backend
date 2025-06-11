@@ -122,14 +122,16 @@ authRoute.post('/google-login', async (req, res) => {
     
     // --- Estrai i dati aggiuntivi dal corpo della richiesta ---
     const { timeZone, dateLocal, timeLocal, deviceInfo } = req.body;
+    const { deviceType,  os,  osVersion,  browser,  browserVersion} = deviceInfo || {};
+
     console.log("DEBUG: `deviceInfo` after destructuring:", deviceInfo); // AGGIUNGI ANCHE QUESTO
 
     // --- GESTIONE DEI NUOVI DATI deviceInfo ---
     if (deviceInfo) {
         console.log(`[LOG da inizio rotta login] Info Dispositivo:`);
-        console.log(`    Tipo: ${deviceInfo.deviceType}`);
-        console.log(`    OS: ${deviceInfo.os} ${deviceInfo.osVersion}`);
-        console.log(`    Browser: ${deviceInfo.browser} ${deviceInfo.browserVersion}`);
+        console.log(`    Tipo: ${deviceType}`);
+        console.log(`    OS: ${os} ${osVersion}`);
+        console.log(`    Browser: ${browser} ${browserVersion}`);
     }
     else { console.log(`[LOG] Info Dispositivo: N/A`); }
 
@@ -178,7 +180,7 @@ authRoute.post('/google-login', async (req, res) => {
             });
 
             // --- Passa i dati a logAccessActivity ---
-            await logAccessActivity(googleName, userEmail, userData.profile, 'login', timeZone, dateLocal, timeLocal, deviceInfo.deviceType, deviceInfo.os, deviceInfo.osVersion, deviceInfo.browser, deviceInfo.browserVersion);
+            await logAccessActivity(googleName, userEmail, userData.profile, 'login', timeZone, dateLocal, timeLocal, deviceType, os, osVersion, browser, browserVersion);
 
         } else {
             // Utente autenticato MA NON AUTORIZZATO (non presente nella whitelist)
@@ -194,14 +196,14 @@ authRoute.post('/google-login', async (req, res) => {
                 googleId: googleId
             });
             // --- Passa i dati aggiuntivi a logAccessActivity per il denied_login ---
-            await logAccessActivity(googleName, userEmail, 'N/A', 'denied_login', timeZone, dateLocal, timeLocal, deviceInfo.deviceType, deviceInfo.os, deviceInfo.osVersion, deviceInfo.browser, deviceInfo.browserVersion);
+            await logAccessActivity(googleName, userEmail, 'N/A', 'denied_login', timeZone, dateLocal, timeLocal, deviceType, os, osVersion, browser, browserVersion);
         }
     } catch (err) {
         // Gestione di errori nella verifica del token (es. token scaduto, non valido)
         console.error('[AUTH] Errore durante la verifica dell\'ID Token:', err.message);
         res.status(401).json({ success: false, message: 'ID Token not provided or invalid.' });
         // --- NUOVO: Passa i dati aggiuntivi a logAccessActivity per l'invalid_token_login ---
-        await logAccessActivity(googleName, userEmail, 'N/A', 'invalid_token_login', timeZone, dateLocal, timeLocal, deviceInfo.deviceType, deviceInfo.os, deviceInfo.osVersion, deviceInfo.browser, deviceInfo.browserVersion);
+        await logAccessActivity(googleName, userEmail, 'N/A', 'invalid_token_login', timeZone, dateLocal, timeLocal, deviceType, os, osVersion, browser, browserVersion);
     }
 });
 
@@ -211,6 +213,7 @@ authRoute.post('/logout', async (req, res) => {
     // vengono passati dal frontend nel corpo della richiesta.
     // --- NUOVO: Estrai timezone, dateLocal, timeLocal ---
     const { email, name, profile, timeZone, dateLocal, timeLocal, deviceInfo } = req.body;
+    const { deviceType,  os,  osVersion,  browser,  browserVersion} = deviceInfo || {};
 
     if (!email) {
         console.warn('[AUTH] Richiesta di logout ricevuta senza email utente fornita.');
@@ -221,7 +224,7 @@ authRoute.post('/logout', async (req, res) => {
     console.log(`[AUTH] Richiesta di logout per: ${email} (Nome: ${name || 'N/A'}, Profilo: ${profile || 'N/A'})`);
 
     // Log dell'attività di logout
-    await logAccessActivity(name || 'sconosciuto', email, profile || 'N/A', 'logout', timeZone, dateLocal, timeLocal, deviceInfo.deviceType, deviceInfo.os, deviceInfo.osVersion, deviceInfo.browser, deviceInfo.browserVersion);
+    await logAccessActivity(name || 'sconosciuto', email, profile || 'N/A', 'logout', timeZone, dateLocal, timeLocal, deviceType, os, osVersion, browser, browserVersion);
 
     // In un'applicazione più complessa, qui si potrebbe invalidare sessioni lato server o token specifici.
     // Nel tuo setup attuale, il logout è principalmente una pulizia lato client e un'attività di log.
