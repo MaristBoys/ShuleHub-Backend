@@ -57,7 +57,7 @@ async function checkUserInSheet(email) {
     * @returns {Promise<void>}
  */
 
-async function logAccessActivity(name, email, profile, type, timeZone = 'N/A', dateLocal = 'N/A', timeLocal = 'N/A', deviceInfo) { // AGGIUNTO timezone, dateLocal, timeLocal con default
+async function logAccessActivity(name, email, profile, type, timeZone = 'N/A', dateLocal = 'N/A', timeLocal = 'N/A',  deviceType, os, osVersion, browser, browserVersion) { // AGGIUNTO timezone, dateLocal, timeLocal con default
     console.log(`[AUTH-LOG] Tentativo di loggare attività: Tipo=${type}, Email=${email}, Nome=${name}, Profilo=${profile}, Timezone=${timeZone}, DateLocal=${dateLocal}, TimeLocal=${timeLocal}`); // AGGIUNTO NEL LOG
 
     // --- GESTIONE DEI NUOVI DATI deviceInfo ---
@@ -90,7 +90,7 @@ async function logAccessActivity(name, email, profile, type, timeZone = 'N/A', d
 
         // Ordine delle colonne nel foglio Access_Logs: Nome, Email, Profilo, Data GMT, Ora GMT, Tipo Attività
         // Aggiungi timezone, dateLocal, timeLocal e deviceInfo che comprende più dettagli sul dispositivo
-        const row = [name, email, profile, dateGMT, timeGMT, type, timeZone, dateLocal, timeLocal, deviceInfo.deviceType, deviceInfo.os, deviceInfo.osVersion, deviceInfo.browser, deviceInfo.browserVersion];
+        const row = [name, email, profile, dateGMT, timeGMT, type, timeZone, dateLocal, timeLocal, deviceInfo.deviceType,  deviceType, os, osVersion, browser, browserVersion];
 
         await sheets.spreadsheets.values.append({
             spreadsheetId,
