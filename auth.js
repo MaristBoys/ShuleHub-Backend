@@ -60,7 +60,7 @@ async function checkUserInSheet(email) {
 async function logAccessActivity(name, email, profile, type, timeZone = 'N/A', dateLocal = 'N/A', timeLocal = 'N/A', deviceType, os, osVersion, browser, browserVersion) { // AGGIUNTO timezone, dateLocal, timeLocal con default
     console.log(`[AUTH-LOG] Tentativo di loggare attività: Tipo=${type}, Email=${email}, Nome=${name}, Profilo=${profile}, Timezone=${timeZone}, DateLocal=${dateLocal}, TimeLocal=${timeLocal}`); // AGGIUNTO NEL LOG
 
-    // --- GESTIONE DEI NUOVI DATI deviceInfo ---
+ /*   // --- GESTIONE DEI NUOVI DATI deviceInfo ---
     if (deviceInfo) {
         console.log(`[LOG] Info Dispositivo:`);
         console.log(`    Tipo: ${deviceType}`);
@@ -68,7 +68,7 @@ async function logAccessActivity(name, email, profile, type, timeZone = 'N/A', d
         console.log(`    Browser: ${browser} ${browserVersion}`);
     }
     else { console.log(`[LOG] Info Dispositivo: N/A`); }
-
+*/
 
     try {
         // Autenticazione per l'accesso in scrittura a Google Sheets
@@ -149,11 +149,6 @@ authRoute.post('/google-login', async (req, res) => {
     }
     else { console.log(`[LOG] Info Dispositivo: N/A`); }
 
-
-    if (!idToken) {
-        console.warn('[AUTH] Tentativo di login senza ID Token o formato non valido.');
-        return res.status(401).json({ success: false, message: 'Token ID not provided or invalid format.' });
-    }
 
     if (!idToken) {
         console.warn('[AUTH] Token mancante o malformato.');
