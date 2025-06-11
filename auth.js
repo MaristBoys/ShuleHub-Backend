@@ -117,12 +117,12 @@ authRoute.post('/google-login', async (req, res) => {
         idToken = authHeader.split(' ')[1];
     }
 
-    
+
     console.log("DEBUG: `req.body` at start of /google-login route:", req.body); // AGGIUNGI QUESTO
-    
+
     // --- Estrai i dati aggiuntivi dal corpo della richiesta ---
     const { timeZone, dateLocal, timeLocal, deviceInfo } = req.body;
-    const { deviceType,  os,  osVersion,  browser,  browserVersion} = deviceInfo || {};
+    const { deviceType, os, osVersion, browser, browserVersion } = deviceInfo || {};
 
     console.log("DEBUG: `deviceInfo` after destructuring:", deviceInfo); // AGGIUNGI ANCHE QUESTO
 
@@ -134,6 +134,16 @@ authRoute.post('/google-login', async (req, res) => {
         console.log(`    Browser: ${browser} ${browserVersion}`);
     }
     else { console.log(`[LOG] Info Dispositivo: N/A`); }
+
+
+    if (deviceInfo) {
+        console.log(`[LOG dopo destrutturazione con proprietà:`);
+        console.log(deviceInfo.deviceType);
+        console.log(deviceInfo.os);
+        console.log(deviceInfo.browser);
+    }
+    else { console.log(`[LOG] Info Dispositivo2: N/A`); }
+
 
 
     if (!idToken) {
@@ -213,7 +223,7 @@ authRoute.post('/logout', async (req, res) => {
     // vengono passati dal frontend nel corpo della richiesta.
     // --- NUOVO: Estrai timezone, dateLocal, timeLocal ---
     const { email, name, profile, timeZone, dateLocal, timeLocal, deviceInfo } = req.body;
-    const { deviceType,  os,  osVersion,  browser,  browserVersion} = deviceInfo || {};
+    const { deviceType, os, osVersion, browser, browserVersion } = deviceInfo || {};
 
     if (!email) {
         console.warn('[AUTH] Richiesta di logout ricevuta senza email utente fornita.');
