@@ -1,2 +1,2 @@
-# MwalimuHub-Backend
-google-api-backend per MwalimuHub
+# ShuleHub-Backend
+Backend pubblicato in Render per ShuleHub
