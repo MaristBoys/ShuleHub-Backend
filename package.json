@@ -1,7 +1,7 @@
 {
-  "name": "google-api-backend",
+  "name": "ShuleHub-Backend",
   "version": "1.0.0",
-  "description": "Backend Node.js per Google API (Drive, Sheets, OAuth)",
+  "description": "Backend Node.js per Google API (Drive, Sheets, OAuth) e Supabase",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
