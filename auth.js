@@ -60,7 +60,6 @@ async function checkUserInDatabase(email, googleId, googleName, googlePicture, l
                 rp.profile_name AS profile, 
                 u.user_is_active,
                 u.email,
-                u.locale
             FROM
                 users u                 
             JOIN
