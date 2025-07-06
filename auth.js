@@ -59,7 +59,7 @@ async function checkUserInDatabase(email, googleId, googleName, googlePicture, l
                 u.id_profile,           -- Necessario per JOIN successiva
                 rp.profile_name AS profile, 
                 u.user_is_active,
-                u.email,
+                u.email
             FROM
                 users u                 
             JOIN
