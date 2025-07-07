@@ -6,6 +6,9 @@ const { GoogleAuth } = require('google-auth-library');
 const { Pool } = require('pg');
 const jwt = require('jsonwebtoken'); // Importa jsonwebtoken
 
+const { saveInChangelog } = require('./utils/changelog'); // Importa la funzione per salvare le modifiche nel campo changelog
+
+
 const authRoute = express.Router();
 // Inizializza OAuth2Client con il GOOGLE_CLIENT_ID dall'ambiente
 const oAuthClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -49,17 +52,19 @@ async function checkUserInDatabase(email, googleId, googleName, googlePicture, l
     let client;
     try {
         client = await pool.connect();
-        
-        // 1. Cerca l'utente per email nel DB e il suo profilo
+
+        // 1. Cerca l'utente per email nel DB e il suo profilo, INCLUDI google_name e changelog
         const userQuery = `
             SELECT
                 u.id AS user_id,
                 u.username,             
                 u.google_id,            
-                u.id_profile,           -- Necessario per JOIN successiva
+                u.google_name,          
+                u.id_profile,           
                 rp.profile_name AS profile, 
                 u.user_is_active,
-                u.email
+                u.email,
+                u.changelog             
             FROM
                 users u                 
             JOIN
@@ -81,29 +86,71 @@ async function checkUserInDatabase(email, googleId, googleName, googlePicture, l
             return null; 
         }
 
-        // Utente trovato e attivo.
-        // Aggiorna SOLO il google_id se è diverso.
-        // Il trigger del DB si occuperà di aggiornare 'updated_at'.
-        if (userData.google_id !== googleId) { 
-            console.log(`[AUTH-DB] Google ID diverso per ${email}. Aggiornamento nel DB.`);
-            const updateQuery = `
-                UPDATE users
-                SET
-                    google_id = $1
-                WHERE email = $2;
-            `;
-            await client.query(updateQuery, [googleId, email]);
-            userData.google_id = googleId; // Aggiorna il google_id nel dato locale per la risposta
-        } else {
-            console.log(`[AUTH-DB] Google ID per ${email} è già aggiornato. Nessuna modifica al DB.`);
+        let changesMade = false;
+        const updateFields = [];
+        const updateValues = [];
+        
+        const changesToLog = []; // Array per tenere traccia delle modifiche da loggare
+
+        // --- Gestione Aggiornamento google_id e google_name ---
+        if (userData.google_id !== googleId) {
+            updateFields.push('google_id = $');
+            updateValues.push(googleId);
+            changesMade = true;
+            console.log(`[AUTH-DB] Aggiornamento google_id per ${email}: da ${userData.google_id} a ${googleId}`);
+            
+            changesToLog.push({
+                field: 'google_id',
+                previous: userData.google_id,
+                current: googleId
+            });
         }
 
-        // 2. Estrai i permessi per il profilo dell'utente
+        if (userData.google_name !== googleName) {
+            updateFields.push('google_name = $');
+            updateValues.push(googleName);
+            changesMade = true;
+            console.log(`[AUTH-DB] Aggiornamento google_name per ${email}: da '${userData.google_name}' a '${googleName}'`);
+
+            changesToLog.push({
+                field: 'google_name',
+                previous: userData.google_name,
+                current: googleName
+            });
+        }
+
+        if (changesMade) {
+            // Se ci sono campi da aggiornare, costruisci la query UPDATE
+            const updateQuery = `
+                UPDATE users
+                SET ${updateFields.map((field, index) => field + (index + 2)).join(', ')} 
+                WHERE id = $1
+            `;
+            await client.query(updateQuery, [userData.user_id, ...updateValues]);
+            console.log(`[AUTH-DB] Campi utente aggiornati nel database per ${email}.`);
+
+            // Ora, per ogni modifica registrata, chiama la funzione saveInChangelog
+            for (const change of changesToLog) {
+                await saveInChangelog( // AGGIORNATO: Chiama la funzione con il nuovo nome
+                    client,           
+                    'users',          
+                    userData.user_id, // L'ID del record utente che viene modificato
+                    change.field,     
+                    change.previous,  
+                    change.current,   
+                    email,            // Email dell'utente che ha fatto la modifica (lo stesso utente che si sta loggando)
+                    userData.user_id  // AGGIUNTO: ID dell'utente che ha fatto la modifica
+                );
+            }
+        }
+        // --- Fine Gestione Aggiornamento google_id e google_name e Changelog ---
+
+        // 2. Estrazione dei permessi dell'utente
         const permissionsQuery = `
             SELECT
                 p.permission_code
             FROM
-                permissions p                      -- Nome tabella corretto: permissions
+                permissions p
             JOIN
                 rel_profile_permission rpp ON p.id = rpp.id_permission
             WHERE
@@ -112,21 +159,26 @@ async function checkUserInDatabase(email, googleId, googleName, googlePicture, l
                 AND p.permission_is_active = TRUE;
         `;
         const permissionsResult = await client.query(permissionsQuery, [userData.id_profile]);
-
         const permissions = permissionsResult.rows.map(row => row.permission_code);
-        console.log(`[AUTH-DB] Permessi caricati per ${userData.profile}:`, permissions);
+
 
         // Restituisce i dati completi dell'utente, inclusi i permessi
+        const finalGoogleId = changesMade && changesToLog.some(c => c.field === 'google_id') ? googleId : userData.google_id;
+        const finalGoogleName = changesMade && changesToLog.some(c => c.field === 'google_name') ? googleName : userData.google_name;
+
         return {
             userId: userData.user_id,
             profile: userData.profile,
             name: userData.username, 
-            googleId: userData.google_id, 
-            googlePicture: googlePicture, // Questo viene sempre dal payload Google, non dal DB
-            email: userData.email, 
-            locale: locale, // Questo viene sempre dal payload Google, non dal DB
+            googleId: finalGoogleId, 
+            googleName: finalGoogleName, 
+            googlePicture: googlePicture, 
+            email: email, 
+            emailVerified: true, 
+            locale: locale, 
             permissions: permissions
         };
+
     } catch (error) {
         console.error('Errore durante il controllo utente e l\'estrazione dei permessi nel database:', error.message);
         throw new Error('Impossibile verificare l\'utente e i permessi nel database di autorizzazione.');
