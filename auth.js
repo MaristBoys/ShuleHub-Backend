@@ -134,6 +134,8 @@ authRoute.post('/google-login', async (req, res) => {
             name: userDataFromDB.name,
             profile: userDataFromDB.profile,
             email: userDataFromDB.email,
+            googleName,
+            googlePicture,
             permissions: userDataFromDB.permissions
         });
 
