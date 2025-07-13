@@ -5,7 +5,9 @@
 // logga le attività di accesso degli utenti in un foglio Google Sheets.
 const pool = require('./configDB'); // Importa la pool di connessioni al database PostgreSQL
 const { GoogleAuth } = require('google-auth-library'); // Importa GoogleAuth per autenticazione per Google Sheets
+const { google } = require('googleapis'); // <--- AGGIUNGI QUESTA RIGA
 const { saveInChangelog } = require('./changelog'); // Importa la funzione per salvare le modifiche nel changelog
+
 
 /**
  * Verifica se un utente è presente nel database PostgreSQL 'users' (whitelist)

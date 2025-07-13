@@ -1,6 +1,5 @@
 // auth.js
 const express = require('express');
-const { google } = require('googleapis');
 const { OAuth2Client } = require('google-auth-library');
 const jwt = require('jsonwebtoken'); // Importa il modulo per la gestione dei JSON Web Tokens
 
