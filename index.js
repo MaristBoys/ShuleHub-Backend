@@ -6,7 +6,15 @@ const app = express();
 const cors = require('cors');
 const multer = require('multer'); // Importa multer
 
-app.use(cors());
+// Configurazione CORS per gestire le richieste dal tuo frontend
+app.use(cors({
+    origin: 'https://maristboys.github.io', // ** <--- IMPOSTA L'ORIGINE ESATTA DEL TUO FRONTEND **
+    credentials: true, // ** <--- NECESSARIO PER INVIARE I COOKIE (come jwtToken) **
+    optionsSuccessStatus: 200 // Consigliato per compatibilità con alcuni client
+}));
+
+
+
 app.use(express.json()); // Per parsing di application/json
 app.use(express.urlencoded({ extended: true })); // Per parsing di application/x-www-form-urlencoded
 
